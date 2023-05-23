@@ -57,7 +57,7 @@ train_input, val_test_input, train_label, val_test_label = train_test_split(inpu
 val_input, test_input, val_label, test_label = train_test_split(val_test_input, val_test_label, test_size=0.5, random_state=42)
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-device
+# device
 
 train_input = torch.tensor(train_input).to(device)
 train_label = torch.tensor(train_label).to(device)
