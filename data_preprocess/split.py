@@ -17,6 +17,7 @@ labels = load_dataset("fever", name='v1.0', split='train')
 labels_df = labels.to_pandas()
 true_false_claims = labels_df[(labels_df.label=='REFUTES') | (labels_df.label=='SUPPORTS')][['claim', 'evidence_wiki_url', 'label']].copy()
 del labels_df
+true_false_claims['label'] = true_false_claims['label'].map({'SUPPORTS': True, 'REFUTES': False})
 
 # bart_set, bertAndTestSet = train_test_split(true_false_claims, test_size=0.4, random_state=42)
 # bert_set, test_set = train_test_split(bertAndTestSet, test_size=0.25, random_state=42)
@@ -57,7 +58,7 @@ del true_false_claims
 
 # bart_set.head()
 
-bart_set2 = bart_set[bart_set.label=='SUPPORTS'].copy()
+bart_set2 = bart_set[bart_set.label== True].copy()
 del bart_set
 # print("New BART set size:", len(bart_set2))
 # bart_set2.head()
@@ -70,15 +71,19 @@ wiki_id_text_df.columns = ['evidence_wiki_url', 'text']
 
 join_bart_df = pd.merge(bart_set2, wiki_id_text_df, on='evidence_wiki_url')
 del bart_set2
+join_bart_df = join_bart_df.drop('evidence_wiki_url', axis=1)
 join_bart_df = join_bart_df.drop_duplicates().reset_index(drop=True)
+
 
 join_bert_df = pd.merge(bert_set, wiki_id_text_df, on='evidence_wiki_url')
 del bert_set
+join_bert_df = join_bert_df.drop('evidence_wiki_url', axis=1)
 join_bert_df = join_bert_df.drop_duplicates().reset_index(drop=True)
 
 join_test_df = pd.merge(test_set, wiki_id_text_df, on='evidence_wiki_url')
 del test_set
 del wiki_id_text_df
+join_test_df = join_test_df.drop('evidence_wiki_url', axis=1)
 join_test_df = join_test_df.drop_duplicates().reset_index(drop=True)
 
 join_bart_df.to_csv('bart_set.csv')
