@@ -116,3 +116,5 @@ with torch.no_grad():
     test_loss /= len(test_loader)
 
 print(f'Test Loss = {test_loss:.4f}')
+
+torch.save(model.state_dict(), '/content/drive/MyDrive/DeClare/bert_model.pth')
