@@ -65,3 +65,8 @@ def translate_sentences(sentences, model, tokenizer, device='cuda'):
             translated_sentences.append(tokenizer.decode(translated_sentence))
 
     return translated_sentences
+
+def remove_special_tokens(text, tokens_to_remove=['<pad>', '</s>']):
+    for token in tokens_to_remove:
+        text = text.replace(token, '')
+    return text.strip()
