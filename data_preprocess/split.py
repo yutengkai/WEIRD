@@ -53,6 +53,8 @@ test_set.reset_index(drop=True, inplace=True)
 # print("BERT set size:", len(bert_set))
 # print("Test set size:", len(test_set))
 
+del true_false_claims
+
 # bart_set.head()
 
 bart_set2 = bart_set[bart_set.label=='SUPPORTS'].copy()
