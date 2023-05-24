@@ -29,6 +29,7 @@ def train_bart(df, mutated_claim_col, model_name="facebook/bart-base"):
     # Convert to PyTorch Datasets
     train_dataset = TensorDataset(train_encodings, train_labels)
     val_dataset = TensorDataset(val_encodings, val_labels)
+    test_dataset = TensorDataset(test_encodings, test_labels)
 
     print("Training set size:", len(train_dataset))
     print("Validation set size:", len(val_dataset))
@@ -40,7 +41,7 @@ def train_bart(df, mutated_claim_col, model_name="facebook/bart-base"):
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_encodings, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     num_epochs = 3
 
