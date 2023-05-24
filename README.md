@@ -1,1 +1,1 @@
-# WIRED
+# WEIRD
