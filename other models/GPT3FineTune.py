@@ -17,7 +17,7 @@ drive.mount('/content/drive')
 df = pd.read_csv('/content/drive/MyDrive/DeClare/bert_set.csv').drop('Unnamed: 0', axis=1)
 
 def prompt_completion_format(df):
-  # df['prompt'] = 'Is the following claim representing the information correctly from the following text?' + 'Claim: ' + df['claim'] + '\nText: ' + df['text'] + '\n\n###\n\n'
+  # df['prompt'] = 'Is the following claim representing the information correctly from the following text?' + '\nClaim: ' + df['claim'] + '\nText: ' + df['text'] + '\n\n###\n\n'
   df['prompt'] = 'Text: ' + df['text'] + '\nClaim: ' + df['claim'] + '\nSupported:'
   df = df.drop('claim', axis=1)
   df = df.drop('text', axis=1)
