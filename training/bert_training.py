@@ -15,14 +15,21 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, classification_report
+import matplotlib.pyplot as plt
 
 """# 1. Load data"""
 
 from google.colab import drive
 drive.mount('/content/drive')
 
-df = pd.read_csv('/content/drive/MyDrive/DeClare/bert_set.csv').drop('Unnamed: 0', axis=1)
-# df.head()
+# df = pd.read_csv('/content/drive/MyDrive/DeClare/bert_set.csv').drop('Unnamed: 0', axis=1)  # a subset of FEVER dataset for training the bert model
+# df = pd.read_csv('/content/drive/MyDrive/DeClare/Snopes.tsv', sep='\t', header=None)
+df = pd.read_csv('/content/drive/MyDrive/DeClare/PolitiFact.tsv', sep='\t', header=None)
+df.columns =['label', 'claim-source', 'claim', 'text', 'article_source']
+df.drop(['claim-source', 'article_source'], axis=1, inplace=True)
+
+df.head()
 
 """# 2. Tokenize input"""
 
@@ -30,24 +37,28 @@ bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 df['input'] = df['claim'] + bert_tokenizer.sep_token + df['text']
 
-# lengths = df.input.apply(lambda x: len(x.split()))
-# print(lengths.min())
-# print(lengths.max())
-# print(lengths.mean())
-# print(lengths.median())
-# lengths.plot.hist()
+lengths = df.input.apply(lambda x: len(x.split()))
+print(lengths.min())
+print(lengths.max())
+print(lengths.mean())
+print(lengths.median())
+lengths.plot.hist()
 
-def bert_encoder(seq, tokenizer, max_length=512):
+def bert_encoder(seq, tokenizer, max_length=128):   # For bert_set.csv, max_length should be set to 512.
   encoding = tokenizer.encode(seq, max_length=max_length, padding="max_length", truncation=True)
   return encoding
 df['input_tokens'] = df.input.apply(bert_encoder, tokenizer=bert_tokenizer)
 # df.head()
 
-df.to_csv('/content/drive/MyDrive/DeClare/input_encoded_base_512.csv', index=False)
+# df.to_csv('/content/drive/MyDrive/DeClare/input_encoded_base_512.csv', index=False)
+# df.to_csv('/content/drive/MyDrive/DeClare/input_encoded_base_128(snopes).csv', index=False)
+df.to_csv('/content/drive/MyDrive/DeClare/input_encoded_base_128(politifact).csv', index=False)
 
 """# 3. Train and fine tune the model"""
 
-df = pd.read_csv('/content/drive/MyDrive/DeClare/input_encoded_base_512.csv')
+# df = pd.read_csv('/content/drive/MyDrive/DeClare/input_encoded_base_512.csv')
+# df = pd.read_csv('/content/drive/MyDrive/DeClare/input_encoded_base_128(snopes).csv')
+df = pd.read_csv('/content/drive/MyDrive/DeClare/input_encoded_base_128(politifact).csv')
 
 df['input_tokens'] = df['input_tokens'].apply(eval)
 
@@ -67,7 +78,7 @@ test_input = torch.tensor(test_input).to(device)
 test_label = torch.tensor(test_label).to(device)
 
 model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=1).to(device)
-model.train()
+# model.train()
 
 train_data = TensorDataset(train_input, train_label)
 val_data = TensorDataset(val_input, val_label)
@@ -95,7 +106,7 @@ for epoch in range(num_epochs):
         train_loss += loss.item()
     train_loss /= len(train_loader)
     train_loss_list.append(train_loss)
-    
+
     val_loss = 0
     with torch.no_grad():
         for input_batch, label_batch in val_loader:
@@ -104,17 +115,62 @@ for epoch in range(num_epochs):
             val_loss += loss.item()
         val_loss /= len(val_loader)
         val_loss_list.append(val_loss)
-    
+
     print(f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Val Loss = {val_loss:.4f}")
 
-test_loss = 0
+# torch.save(model.state_dict(), '/content/drive/MyDrive/DeClare/bert_model.pth')
+torch.save(model.state_dict(), '/content/drive/MyDrive/DeClare/bert_model(snopes).pth')
+torch.save(model.state_dict(), '/content/drive/MyDrive/DeClare/bert_model(politifact).pth')
+
+# model.load_state_dict(torch.load('/content/drive/MyDrive/DeClare/bert_model.pth'))
+model.load_state_dict(torch.load('/content/drive/MyDrive/DeClare/bert_model(snopes).pth'))
+model.load_state_dict(torch.load('/content/drive/MyDrive/DeClare/bert_model(politifact).pth'))
+
+# test_loss = 0
+probs = []
+true_labels = []
 with torch.no_grad():
     for input_batch, label_batch in test_loader:
-        outputs = model(input_ids=input_batch, labels=label_batch.float())
-        loss = outputs.loss
-        test_loss += loss.item()
-    test_loss /= len(test_loader)
+        # outputs = model(input_ids=input_batch, labels=label_batch.float())
+        outputs = model(input_ids=input_batch)
+        # loss = outputs.loss
+        # test_loss += loss.item()
+        prob = torch.sigmoid(outputs[0])
+        probs.extend(prob.detach().cpu().numpy().tolist())  # Move probabilities to cpu before converting to numpy
+        true_labels.extend(label_batch.cpu().numpy().tolist())  # Move labels to cpu before converting to numpy
+    # test_loss /= len(test_loader)
 
-print(f'Test Loss = {test_loss:.4f}')
+# print(f'Test Loss = {test_loss:.4f}')
 
-torch.save(model.state_dict(), '/content/drive/MyDrive/DeClare/bert_model.pth')
+true_labels = [int(label) for label in true_labels]
+probs = [prob[0] for prob in probs]
+
+fpr, tpr, _ = roc_curve(true_labels, probs)
+roc_auc = auc(fpr, tpr)
+
+# Plot ROC curve
+plt.figure()
+plt.plot(fpr, tpr, color='darkorange', label='ROC curve (area = %0.2f)' % roc_auc)
+plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic')
+plt.legend(loc="lower right")
+plt.show()
+
+# Calculate PR AUC
+precision, recall, _ = precision_recall_curve(true_labels, probs)
+pr_auc = auc(recall, precision)
+
+# Plot PR curve
+plt.figure()
+plt.plot(recall, precision, color='darkorange', label='PR curve (area = %0.2f)' % pr_auc)
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall curve')
+plt.legend(loc="lower right")
+plt.show()
